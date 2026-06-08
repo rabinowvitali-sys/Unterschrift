@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Подпись</title>
     <style>
-        canvas { border: 2px solid #000; cursor: crosshair; }
+        canvas { border: 2px solid #000; cursor: crosshair; touch-action: none; }
     </style>
 </head>
 <body>
     <canvas id="sigCanvas" width="400" height="200"></canvas>
     <br>
     <button onclick="clearCanvas()">Очистить</button>
+    <button onclick="sendSignature()">Отправить</button>
 
     <script>
         const canvas = document.getElementById('sigCanvas');
@@ -23,16 +25,33 @@
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
             const rect = canvas.getBoundingClientRect();
-            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            ctx.lineTo(clientX - rect.left, clientY - rect.top);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.moveTo(clientX - rect.left, clientY - rect.top);
         }
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
         canvas.addEventListener('mousedown', startPosition);
         canvas.addEventListener('mouseup', finishedPosition);
         canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', startPosition);
+        canvas.addEventListener('touchend', finishedPosition);
+        canvas.addEventListener('touchmove', draw);
+
+        async function sendSignature() {
+            const dataURL = canvas.toDataURL("image/png");
+            try {
+                await fetch('ТВОЙ_URL_ЗДЕСЬ', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataURL })
+                });
+                alert('Отправлено');
+            } catch (err) { alert('Ошибка'); }
+        }
     </script>
 </body>
 </html>
