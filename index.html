@@ -1,50 +1,21 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { margin: 0; padding: 10px; background: #fff; touch-action: none; }
-        #canvas { width: 100%; height: 300px; border: 1px solid #ccc; background: #fff; display: block; }
-        button { width: 100%; padding: 15px; margin-top: 10px; border: none; background: #2481cc; color: white; border-radius: 8px; }
-    </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body>
-    <canvas id="canvas"></canvas>
-    <button onclick="send()">Отправить в чат</button>
-
+<body style="margin:0; overflow:hidden;">
+    <canvas id="c" width="400" height="200" style="border:1px solid #000; touch-action:none;"></canvas>
+    <button onclick="s()" style="width:100%; padding:20px; font-size:20px;">Send photo</button>
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 800; canvas.height = 300;
-        let drawing = false;
-
-        const draw = (e) => {
-            if (!drawing) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (800 / rect.width);
-            const y = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * (300 / rect.height);
-            ctx.lineTo(x, y); ctx.stroke();
-        };
-
-        canvas.onmousedown = () => drawing = true;
-        canvas.onmouseup = () => { drawing = false; ctx.beginPath(); };
-        canvas.onmousemove = draw;
-        canvas.ontouchstart = (e) => { drawing = true; };
-        canvas.ontouchend = () => { drawing = false; ctx.beginPath(); };
-        canvas.ontouchmove = draw;
-
-        function send() {
-            canvas.toBlob((blob) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => {
-                    // Telegram сам отправит это в чат боту
-                    Telegram.WebApp.sendData(reader.result);
-                    Telegram.WebApp.close();
-                };
-            }, 'image/png');
+        const c = document.getElementById('c'), x = c.getContext('2d');
+        let d = false;
+        c.onmousedown = () => d = true;
+        c.onmouseup = () => { d = false; x.beginPath(); };
+        c.onmousemove = (e) => { if(d) { x.lineTo(e.offsetX, e.offsetY); x.stroke(); }};
+        function s() {
+            Telegram.WebApp.sendData(c.toDataURL('image/png'));
+            Telegram.WebApp.close();
         }
     </script>
 </body>
