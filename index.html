@@ -1,49 +1,32 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; background: #f0f0f0; }
-        canvas { background: #fff; border: 2px solid #ccc; border-radius: 8px; touch-action: none; width: 100%; max-width: 500px; height: 300px; }
-        button { margin-top: 20px; width: 100%; max-width: 500px; padding: 15px; font-size: 18px; background: #2481cc; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-
-    <canvas id="c"></canvas>
-    <button onclick="send()">Отправить фото</button>
-
+    <div id="capture-area">
+        <canvas id="c" width="300" height="300" style="border:1px solid black;"></canvas>
+    </div>
+    <button onclick="send()">Отправить напрямую в бот</button>
     <script>
-        const c = document.getElementById('c'), x = c.getContext('2d');
-        c.width = 800; c.height = 400;
-        let d = false;
-        
-        const pos = (e) => {
-            const r = c.getBoundingClientRect();
-            const clX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: (clX - r.left) * (800 / r.width), y: (clY - r.top) * (400 / r.height) };
-        };
-
-        c.onmousedown = (e) => { d = true; x.beginPath(); x.moveTo(pos(e).x, pos(e).y); };
-        c.onmousemove = (e) => { if (d) { x.lineTo(pos(e).x, pos(e).y); x.stroke(); }};
-        c.onmouseup = () => d = false;
-        
-        c.ontouchstart = (e) => { d = true; x.beginPath(); x.moveTo(pos(e).x, pos(e).y); };
-        c.ontouchmove = (e) => { if (d) { x.lineTo(pos(e).x, pos(e).y); x.stroke(); e.preventDefault(); }};
-        c.ontouchend = () => d = false;
+        const c = document.getElementById('c'), ctx = c.getContext('2d'), t = 'ТВОЙ_ТОКЕН_БОТА';
+        let p = false;
+        c.onmousedown = () => p = true;
+        c.onmouseup = () => p = false;
+        c.onmousemove = (e) => { if(p) ctx.fillRect(e.offsetX, e.offsetY, 5, 5); };
 
         async function send() {
-            c.toBlob(async (blob) => {
+            const canvas = await html2canvas(document.getElementById('capture-area'));
+            canvas.toBlob(async (blob) => {
                 const fd = new FormData();
-                fd.append('file', blob, 'signature.png');
                 fd.append('chat_id', Telegram.WebApp.initDataUnsafe.user.id);
+                fd.append('photo', blob);
                 
-                // Сюда вставь URL из ноды Webhook в n8n
-                await fetch('ТВОЙ_WEBHOOK_URL_ИЗ_N8N', { method: 'POST', body: fd });
-                
+                await fetch(https://api.telegram.org/bot${t}/sendPhoto, { 
+                    method: 'POST', 
+                    body: fd 
+                });
                 Telegram.WebApp.close();
             }, 'image/png');
         }
