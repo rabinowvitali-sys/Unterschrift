@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Подпись</title>
     <style>
-        canvas { border: 2px solid #000; cursor: crosshair; touch-action: none; }
+        canvas { border: 2px solid #000; cursor: crosshair; touch-action: none; background: #fff; }
+        body { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        button { margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
     <canvas id="sigCanvas" width="400" height="200"></canvas>
-    <br>
-    <button onclick="clearCanvas()">Очистить</button>
-    <button onclick="sendSignature()">Отправить</button>
+    <div>
+        <button onclick="clearCanvas()">Очистить</button>
+        <button onclick="sendSignature()">Отправить</button>
+    </div>
 
     <script>
         const canvas = document.getElementById('sigCanvas');
@@ -25,8 +29,8 @@
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
             const rect = canvas.getBoundingClientRect();
-            const clientX = e.clientX || e.touches[0].clientX;
-            const clientY = e.clientY || e.touches[0].clientY;
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
             ctx.lineTo(clientX - rect.left, clientY - rect.top);
             ctx.stroke();
             ctx.beginPath();
@@ -42,15 +46,38 @@
         canvas.addEventListener('touchmove', draw);
 
         async function sendSignature() {
+            const token = '8664770862:AAHwjp02mTm_icPTk_0zXbCBHDTH_gbQHUM';
+            const urlParams = new URLSearchParams(window.location.search);
+            const chatId = urlParams.get('chatId');
+
+            if (!chatId) {
+                alert("Ошибка: ID пользователя не найден в ссылке.");
+                return;
+            }
+
             const dataURL = canvas.toDataURL("image/png");
+            const response = await fetch(dataURL);
+            const blob = await response.blob();
+            
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('photo', blob, 'signature.png');
+            
             try {
-                await fetch('ТВОЙ_URL_ЗДЕСЬ', {
+                const res = await fetch(https://api.telegram.org/bot${token}/sendPhoto, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: dataURL })
+                    body: formData
                 });
-                alert('Отправлено');
-            } catch (err) { alert('Ошибка'); }
+                
+                if (res.ok) {
+                    alert('Подпись успешно отправлена!');
+                    clearCanvas();
+                } else {
+                    alert('Ошибка при отправке в Telegram.');
+                }
+            } catch (err) {
+                alert('Ошибка соединения.');
+            }
         }
     </script>
 </body>
