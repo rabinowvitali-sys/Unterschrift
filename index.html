@@ -1,85 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Подпись</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
-        canvas { 
-            border: 2px solid #000; 
-            cursor: crosshair; 
-            touch-action: none; 
-            background: #fff; 
-            display: block;
-        }
+        body { margin: 0; padding: 20px; font-family: sans-serif; background: #fff; }
+        canvas { width: 100%; height: 300px; border: 1px solid #000; touch-action: none; display: block; }
+        button { margin-top: 10px; padding: 15px; width: 48%; }
     </style>
 </head>
 <body>
-    <canvas id="sigCanvas" width="400" height="200"></canvas>
-    <br>
-    <button onclick="clearCanvas()">Очистить</button>
-    <button onclick="sendSignature()">Отправить</button>
+    <canvas id="s"></canvas>
+    <button onclick="document.getElementById('s').getContext('2d').clearRect(0,0,1600,500)">Очистить</button>
+    <button onclick="send()">Отправить</button>
 
     <script>
-        const canvas = document.getElementById('sigCanvas');
-        const ctx = canvas.getContext('2d');
-        let painting = false;
+        const c = document.getElementById('s');
+        const ctx = c.getContext('2d');
+        c.width = 1600; c.height = 500;
+        let p = false;
 
-        function startPosition(e) { 
-            e.preventDefault();
-            painting = true; 
-            draw(e); 
-        }
+        const draw = (e) => {
+            if (!p) return;
+            const r = c.getBoundingClientRect();
+            const x = ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) * (1600 / r.width);
+            const y = ((e.touches ? e.touches[0].clientY : e.clientY) - r.top) * (500 / r.height);
+            ctx.lineTo(x, y); ctx.stroke();
+        };
 
-        function finishedPosition() { 
-            painting = false; 
-            ctx.beginPath(); 
-        }
+        c.onmousedown = () => p = true;
+        c.onmouseup = () => { p = false; ctx.beginPath(); };
+        c.onmousemove = draw;
+        c.ontouchstart = (e) => { e.preventDefault(); p = true; };
+        c.ontouchend = () => { p = false; ctx.beginPath(); };
+        c.ontouchmove = (e) => { e.preventDefault(); draw(e); };
 
-        function draw(e) {
-            if (!painting) return;
-            e.preventDefault();
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            ctx.lineTo(clientX - rect.left, clientY - rect.top);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(clientX - rect.left, clientY - rect.top);
-        }
-
-        function clearCanvas() { 
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-        }
-
-        canvas.addEventListener('mousedown', startPosition);
-        canvas.addEventListener('mouseup', finishedPosition);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('touchstart', startPosition, {passive: false});
-        canvas.addEventListener('touchend', finishedPosition);
-        canvas.addEventListener('touchmove', draw, {passive: false});
-
-        async function sendSignature() {
-            canvas.toBlob(async (blob) => {
-                const formData = new FormData();
-                formData.append('signature', blob, 'sig.png');
-                
-                try {
-                    const response = await fetch('ТВОЙ_URL_ЗДЕСЬ', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (response.ok) {
-                        alert('Отправлено');
-                    } else {
-                        alert('Ошибка: ' + response.status);
-                    }
-                } catch (err) { 
-                    alert('Ошибка сети'); 
-                }
+        async function send() {
+            c.toBlob(async (b) => {
+                const fd = new FormData();
+                fd.append('signature', b, 'signature.png');
+                fd.append('chat_id', Telegram.WebApp.initDataUnsafe.user.id);
+                await fetch('ТВОЙ_WEBHOOK_URL', { method: 'POST', body: fd });
+                Telegram.WebApp.close();
             }, 'image/png');
         }
     </script>
