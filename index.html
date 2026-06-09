@@ -5,121 +5,87 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-html,body{
-margin:0;
-padding:0;
-width:100%;
-height:100%;
-overflow:hidden;
-font-family:sans-serif;
-background:#f5f5f5;
-}
-body{
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-}
-canvas{
-background:#fff;
-border:1px solid #ccc;
-border-radius:12px;
-touch-action:none;
-}
-button{
-margin-top:12px;
-padding:10px 16px;
-border:none;
-border-radius:8px;
-}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:sans-serif;background:#f5f5f5}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center}
+canvas{background:#fff;border:1px solid #ccc;border-radius:12px;touch-action:none}
+button{margin-top:12px;padding:10px 16px;border:none;border-radius:8px}
 </style>
 </head>
 <body>
 
-<canvas id="canvas" width="320" height="180"></canvas>
+<canvas id="canvas" width="200" height="120"></canvas>
 <button id="clear">Очистить</button>
 
 <script>
 
-const tg = window.Telegram.WebApp;
-tg.ready();
+const tg = window.Telegram.WebApp
+tg.ready()
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas = document.getElementById("canvas")
+const ctx = canvas.getContext("2d")
 
-ctx.strokeStyle = "#000";
-ctx.lineWidth = 2;
-ctx.lineCap = "round";
+ctx.strokeStyle = "#000"
+ctx.lineWidth = 2
+ctx.lineCap = "round"
 
-let drawing = false;
-let signed = false;
+let drawing = false
+let signed = false
 
 function pos(e){
-    const r = canvas.getBoundingClientRect();
-    return {
-        x: e.clientX - r.left,
-        y: e.clientY - r.top
-    };
+const r = canvas.getBoundingClientRect()
+return {x:e.clientX-r.left,y:e.clientY-r.top}
 }
 
-canvas.addEventListener("pointerdown", e => {
-    drawing = true;
-    const p = pos(e);
-    ctx.beginPath();
-    ctx.moveTo(p.x,p.y);
-});
+canvas.addEventListener("pointerdown",e=>{
+drawing=true
+const p=pos(e)
+ctx.beginPath()
+ctx.moveTo(p.x,p.y)
+})
 
-canvas.addEventListener("pointermove", e => {
-    if(!drawing) return;
-    const p = pos(e);
-    ctx.lineTo(p.x,p.y);
-    ctx.stroke();
-    signed = true;
-});
+canvas.addEventListener("pointermove",e=>{
+if(!drawing)return
+const p=pos(e)
+ctx.lineTo(p.x,p.y)
+ctx.stroke()
+signed=true
+})
 
-canvas.addEventListener("pointerup", () => {
-    drawing = false;
-});
+canvas.addEventListener("pointerup",()=>drawing=false)
+canvas.addEventListener("pointerleave",()=>drawing=false)
 
-canvas.addEventListener("pointerleave", () => {
-    drawing = false;
-});
+document.getElementById("clear").onclick=()=>{
+ctx.clearRect(0,0,canvas.width,canvas.height)
+signed=false
+}
 
-document.getElementById("clear").onclick = () => {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    signed = false;
-};
+function getCompressedPNG() {
+const small = document.createElement("canvas")
+small.width = 120
+small.height = 72
 
-tg.MainButton.setText("Подписать");
-tg.MainButton.show();
+const sctx = small.getContext("2d")
 
-tg.onEvent("mainButtonClicked", () => {
+sctx.drawImage(canvas, 0, 0, small.width, small.height)
 
-    if(!signed){
-        tg.showAlert("Поставьте подпись");
-        return;
-    }
+return small.toDataURL("image/png")
+}
 
-    const smallCanvas = document.createElement("canvas");
-    const scale = 0.5;
+tg.MainButton.setText("Подписать")
+tg.MainButton.show()
 
-    smallCanvas.width = canvas.width * scale;
-    smallCanvas.height = canvas.height * scale;
+tg.onEvent("mainButtonClicked",()=>{
+if(!signed){
+tg.showAlert("Поставьте подпись")
+return
+}
 
-    const sctx = smallCanvas.getContext("2d");
+const png = getCompressedPNG()
 
-    sctx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+tg.sendData(png)
 
-    const compressed = smallCanvas.toDataURL("image/jpeg", 0.4);
-
-    tg.sendData(JSON.stringify({
-        type: "signature",
-        png: compressed,
-        ts: Date.now()
-    }));
-
-    tg.close();
-});
+tg.close()
+})
 
 </script>
 
