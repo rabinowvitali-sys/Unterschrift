@@ -5,115 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --bg: var(--tg-theme-bg-color, #ffffff);
-            --text: var(--tg-theme-text-color, #000000);
-            --btn: var(--tg-theme-button-color, #2481cc);
-            --btn-text: var(--tg-theme-button-text-color, #ffffff);
-        }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
-        canvas { background: #fff; border: 2px solid var(--btn); border-radius: 12px; touch-action: none; width: 100%; height: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        #debug-panel { height: 120px; background: #000; color: #0f0; font-family: monospace; font-size: 10px; overflow-y: scroll; padding: 8px; border-top: 2px solid var(--btn); }
+        body { margin: 0; background: var(--tg-theme-bg-color, #fff); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        /* Компактное окно: фиксированный размер для минимизации веса данных */
+        canvas { width: 280px; height: 140px; background: #fff; border: 1px solid #ccc; border-radius: 8px; touch-action: none; cursor: crosshair; }
+        #debug { color: #888; font-size: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div id="canvas-container">
-    <canvas id="sig"></canvas>
-</div>
-<div id="debug-panel">System: Initializing...</div>
+<canvas id="sig" width="280" height="140"></canvas>
+<div id="debug">Ready</div>
 
 <script>
-    class SignaturePro {
-        constructor() {
-            this.tg = window.Telegram.WebApp;
-            this.canvas = document.getElementById('sig');
-            this.logPanel = document.getElementById('debug-panel');
-            this.ctx = this.canvas.getContext('2d');
-            this.isDrawing = false;
-            
-            this.init();
-        }
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    // НЕ вызываем tg.expand() — пусть окно остается компактным
+    
+    const canvas = document.getElementById('sig');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
 
-        log(msg) {
-            this.logPanel.innerHTML += <div>[${new Date().toLocaleTimeString()}] ${msg}</div>;
-            this.logPanel.scrollTop = this.logPanel.scrollHeight;
-        }
+    // Настройка кисти для маленького холста
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
 
-        init() {
-            try {
-                this.tg.ready();
-                this.tg.expand();
-                this.setupCanvas();
-                this.setupUI();
-                this.bindEvents();
-                this.log("System: Ready & Loaded");
-            } catch (e) {
-                this.log("CRITICAL: " + e.message);
-            }
-        }
+    // Слушатели для рисования
+    const getPos = (e) => ({ x: (e.touches ? e.touches[0].clientX : e.clientX) - canvas.offsetLeft, y: (e.touches ? e.touches[0].clientY : e.clientY) - canvas.offsetTop });
+    
+    canvas.addEventListener('mousedown', (e) => { isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); });
+    canvas.addEventListener('mousemove', (e) => { if(isDrawing) { const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); } });
+    canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('touchstart', (e) => { isDrawing = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); });
+    canvas.addEventListener('touchmove', (e) => { if(isDrawing) { const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); } });
+    canvas.addEventListener('touchend', () => isDrawing = false);
 
-        setupCanvas() {
-            const rect = this.canvas.getBoundingClientRect();
-            this.canvas.width = rect.width * window.devicePixelRatio;
-            this.canvas.height = rect.height * window.devicePixelRatio;
-            this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            this.ctx.lineWidth = 4;
-            this.ctx.lineCap = 'round';
-            this.ctx.strokeStyle = '#000';
-            this.log("System: Canvas Resized");
-        }
-
-        setupUI() {
-            const lang = this.tg.initDataUnsafe.user?.language_code || 'en';
-            const btnText = lang === 'ru' ? 'ОТПРАВИТЬ ПОДПИСЬ' : 'SEND SIGNATURE';
-            this.tg.MainButton.setText(btnText).show();
-            this.tg.onEvent('mainButtonClicked', () => this.submit());
-        }
-
-        bindEvents() {
-            ['mousedown', 'touchstart'].forEach(t => this.canvas.addEventListener(t, (e) => {
-                this.isDrawing = true;
-                this.ctx.beginPath();
-                const p = this.getPos(e);
-                this.ctx.moveTo(p.x, p.y);
-            }));
-            ['mousemove', 'touchmove'].forEach(t => this.canvas.addEventListener(t, (e) => {
-                if(!this.isDrawing) return;
-                const p = this.getPos(e);
-                this.ctx.lineTo(p.x, p.y);
-                this.ctx.stroke();
-            }));
-            ['mouseup', 'touchend'].forEach(t => this.canvas.addEventListener(t, () => this.isDrawing = false));
-        }
-
-        getPos(e) {
-            const r = this.canvas.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-            const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-            return { x, y };
-        }
-
-        submit() {
-            this.log("Action: Sending data...");
-            this.tg.HapticFeedback.impactOccurred('medium');
-            try {
-                const payload = {
-                    uid: this.tg.initDataUnsafe.user?.id,
-                    data: this.canvas.toDataURL('image/png')
-                };
-                this.tg.sendData(JSON.stringify(payload));
-                this.log("Status: Bridge Sent");
-                this.tg.close();
-            } catch (err) {
-                this.log("FAIL: " + err.message);
-                this.tg.HapticFeedback.notificationOccurred('error');
-            }
-        }
-    }
-
-    new SignaturePro();
+    tg.MainButton.setText('SIGN').show();
+    tg.onEvent('mainButtonClicked', () => {
+        // JPEG с самым низким качеством — для максимально легкого JSON
+        const data = canvas.toDataURL('image/jpeg', 0.2).split(',')[1];
+        tg.sendData(JSON.stringify({ sig: data }));
+        tg.close();
+    });
 </script>
 </body>
 </html>
