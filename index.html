@@ -36,26 +36,15 @@
     canvas.onmousemove = draw;
 
     document.getElementById('save-btn').onclick = () => {
-        canvas.toBlob(async (blob) => {
-            const formData = new FormData();
-            formData.append('initData', tg.initData);
-            formData.append('file', blob, 'signature.png');
-
-            try {
-                const response = await fetch('ТВОЙ_WEBHOOK_URL_ИЗ_N8N', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    tg.close();
-                } else {
-                    alert('Ошибка отправки');
-                }
-            } catch (err) {
-                alert('Нет связи с n8n');
-            }
-        }, 'image/png');
+        const dataURL = canvas.toDataURL('image/png');
+        
+        // Отправляем данные напрямую через Telegram API
+        tg.sendData(JSON.stringify({
+            action: 'save_signature',
+            image: dataURL
+        }));
+        
+        tg.close();
     };
 </script>
 </body>
