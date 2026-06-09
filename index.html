@@ -16,11 +16,9 @@
 <button id="save-btn">Отправить</button>
 
 <script>
-    // 1. Инициализация
     const tg = window.Telegram.WebApp;
     tg.ready();
 
-    // 2. Рисование
     const canvas = document.getElementById('signature-pad');
     const ctx = canvas.getContext('2d');
     let drawing = false;
@@ -37,15 +35,27 @@
     canvas.onmouseup = () => drawing = false;
     canvas.onmousemove = draw;
 
-    // 3. Отправка
     document.getElementById('save-btn').onclick = () => {
-        const dataURL = canvas.toDataURL('image/png');
-        
-        // Отправка в n8n через Telegram
-        tg.sendData(JSON.stringify({ image: dataURL }));
-        
-        // Закрытие
-        tg.close();
+        canvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append('initData', tg.initData);
+            formData.append('file', blob, 'signature.png');
+
+            try {
+                const response = await fetch('ТВОЙ_WEBHOOK_URL_ИЗ_N8N', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    tg.close();
+                } else {
+                    alert('Ошибка отправки');
+                }
+            } catch (err) {
+                alert('Нет связи с n8n');
+            }
+        }, 'image/png');
     };
 </script>
 </body>
