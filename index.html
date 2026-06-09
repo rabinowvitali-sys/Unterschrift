@@ -1,45 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        canvas { border: 1px solid #000; touch-action: none; }
+        :root { --bg: #f0f2f5; --canvas: #ffffff; }
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+        .container { width: 95vw; height: 70vh; display: flex; flex-direction: column; gap: 10px; }
+        canvas { background: var(--canvas); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); touch-action: none; width: 100%; height: 100%; border: 1px solid #d1d1d6; }
+        #log { font-size: 10px; color: #8e8e93; text-align: center; height: 20px; }
     </style>
 </head>
 <body>
 
-<canvas id="s" width="300" height="150"></canvas>
+<div class="container">
+    <canvas id="mainCanvas"></canvas>
+    <div id="log">Ready</div>
+</div>
 
 <script>
-    const tg = window.Telegram.WebApp;
-    const canvas = document.getElementById('s');
-    const ctx = canvas.getContext('2d');
-    
-    // Включаем кнопку в интерфейсе самого Telegram
-    tg.MainButton.text = "Подписать";
-    tg.MainButton.show();
-    
-    let d = false;
-    canvas.onmousedown = () => d = true;
-    canvas.onmouseup = () => d = false;
-    canvas.onmousemove = (e) => {
-        if (!d) return;
-        ctx.lineTo(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop);
-        ctx.stroke();
-    };
+    class SignatureApp {
+        constructor() {
+            this.tg = window.Telegram.WebApp;
+            this.canvas = document.getElementById('mainCanvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.isDrawing = false;
+            
+            this.init();
+        }
 
-    // "Хакерский" проброс данных через системное событие
-    tg.onEvent('mainButtonClicked', () => {
-        const data = {
-            id: tg.initDataUnsafe.user.id,
-            img: canvas.toDataURL('image/png')
-        };
-        
-        tg.sendData(JSON.stringify(data));
-        tg.close();
-    });
+        init() {
+            this.tg.ready();
+            this.tg.expand();
+            this.setupCanvas();
+            this.setupListeners();
+            this.setupUI();
+        }
+
+        setupCanvas() {
+            const rect = this.canvas.getBoundingClientRect();
+            this.canvas.width = rect.width * window.devicePixelRatio;
+            this.canvas.height = rect.height * window.devicePixelRatio;
+            this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            this.ctx.lineWidth = 3;
+            this.ctx.lineCap = 'round';
+            this.ctx.strokeStyle = '#000';
+        }
+
+        setupUI() {
+            const lang = this.tg.initDataUnsafe.user?.language_code || 'en';
+            const buttons = { 'ru': 'ПОДТВЕРДИТЬ', 'en': 'CONFIRM' };
+            this.tg.MainButton.setText(buttons[lang] || buttons['en']);
+            this.tg.MainButton.show();
+            
+            this.tg.onEvent('mainButtonClicked', () => this.submit());
+        }
+
+        setupListeners() {
+            ['mousedown', 'touchstart'].forEach(type => this.canvas.addEventListener(type, e => this.start(e)));
+            ['mousemove', 'touchmove'].forEach(type => this.canvas.addEventListener(type, e => this.draw(e)));
+            ['mouseup', 'touchend'].forEach(type => this.canvas.addEventListener(type, () => this.isDrawing = false));
+        }
+
+        start(e) {
+            this.isDrawing = true;
+            const p = this.getPos(e);
+            this.ctx.beginPath();
+            this.ctx.moveTo(p.x, p.y);
+        }
+
+        draw(e) {
+            if (!this.isDrawing) return;
+            const p = this.getPos(e);
+            this.ctx.lineTo(p.x, p.y);
+            this.ctx.stroke();
+        }
+
+        getPos(e) {
+            const rect = this.canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        submit() {
+            try {
+                const payload = {
+                    uid: this.tg.initDataUnsafe.user?.id,
+                    data: this.canvas.toDataURL('image/png')
+                };
+                this.tg.sendData(JSON.stringify(payload));
+                this.tg.close();
+            } catch (err) {
+                document.getElementById('log').innerText = 'Error: ' + err.message;
+            }
+        }
+    }
+
+    new SignatureApp();
 </script>
 </body>
 </html>
