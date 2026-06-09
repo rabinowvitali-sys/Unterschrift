@@ -1,35 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-</head>
-<body>
-    <div id="capture-area">
-        <canvas id="c" width="300" height="300" style="border:1px solid black;"></canvas>
-    </div>
-    <button onclick="send()">Отправить напрямую в бот</button>
-    <script>
-        const c = document.getElementById('c'), ctx = c.getContext('2d'), t = 'ТВОЙ_ТОКЕН_БОТА';
-        let p = false;
-        c.onmousedown = () => p = true;
-        c.onmouseup = () => p = false;
-        c.onmousemove = (e) => { if(p) ctx.fillRect(e.offsetX, e.offsetY, 5, 5); };
+<canvas id="signature-pad" width="400" height="200" style="border:1px solid #000;"></canvas>
+<button id="save-btn">Отправить подпись</button>
 
-        async function send() {
-            const canvas = await html2canvas(document.getElementById('capture-area'));
-            canvas.toBlob(async (blob) => {
-                const fd = new FormData();
-                fd.append('chat_id', Telegram.WebApp.initDataUnsafe.user.id);
-                fd.append('photo', blob);
-                
-                await fetch(https://api.telegram.org/bot${t}/sendPhoto, { 
-                    method: 'POST', 
-                    body: fd 
-                });
-                Telegram.WebApp.close();
-            }, 'image/png');
-        }
-    </script>
-</body>
-</html>
+<script>
+const canvas = document.getElementById('signature-pad');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+
+// Логика рисования
+canvas.onmousedown = () => drawing = true;
+canvas.onmouseup = () => drawing = false;
+canvas.onmousemove = (e) => {
+    if (!drawing) return;
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+};
+
+// Функция захвата картинки
+document.getElementById('save-btn').onclick = () => {
+    const dataURL = canvas.toDataURL('image/png'); // Вот она, твоя готовая картинка
+    console.log("Картинка готова:", dataURL);
+    // Сюда мы добавим fetch, когда настроим n8n
+};
+</script>
