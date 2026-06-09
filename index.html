@@ -100,9 +100,21 @@ tg.onEvent("mainButtonClicked", () => {
         return;
     }
 
+    const smallCanvas = document.createElement("canvas");
+    const scale = 0.5;
+
+    smallCanvas.width = canvas.width * scale;
+    smallCanvas.height = canvas.height * scale;
+
+    const sctx = smallCanvas.getContext("2d");
+
+    sctx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+
+    const compressed = smallCanvas.toDataURL("image/jpeg", 0.4);
+
     tg.sendData(JSON.stringify({
         type: "signature",
-        png: canvas.toDataURL("image/png"),
+        png: compressed,
         ts: Date.now()
     }));
 
