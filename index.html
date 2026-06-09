@@ -1,24 +1,48 @@
-<canvas id="signature-pad" width="400" height="200" style="border:1px solid #000;"></canvas>
-<button id="save-btn">Отправить подпись</button>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        canvas { border:1px solid #000; display: block; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<canvas id="signature-pad" width="400" height="200"></canvas>
+<button id="save-btn">Отправить</button>
 
 <script>
-const canvas = document.getElementById('signature-pad');
-const ctx = canvas.getContext('2d');
-let drawing = false;
+    // 1. Инициализация
+    const tg = window.Telegram.WebApp;
+    tg.ready();
 
-// Логика рисования
-canvas.onmousedown = () => drawing = true;
-canvas.onmouseup = () => drawing = false;
-canvas.onmousemove = (e) => {
-    if (!drawing) return;
-    ctx.lineTo(e.offsetX, e.offsetY);
-    ctx.stroke();
-};
+    // 2. Логика рисования
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
 
-// Функция захвата картинки
-document.getElementById('save-btn').onclick = () => {
-    const dataURL = canvas.toDataURL('image/png'); // Вот она, твоя готовая картинка
-    console.log("Картинка готова:", dataURL);
-    // Сюда мы добавим fetch, когда настроим n8n
-};
+    canvas.onmousedown = () => drawing = true;
+    canvas.onmouseup = () => { drawing = false; ctx.beginPath(); };
+    canvas.onmousemove = (e) => {
+        if (!drawing) return;
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+    };
+
+    // 3. Отправка в чат
+    document.getElementById('save-btn').onclick = () => {
+        const dataURL = canvas.toDataURL('image/png');
+        
+        // Передача данных в n8n через Telegram
+        tg.sendData(JSON.stringify({
+            image: dataURL
+        }));
+        
+        // Закрытие Web App
+        tg.close();
+    };
 </script>
+
+</body>
+</html>
