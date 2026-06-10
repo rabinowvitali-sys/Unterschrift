@@ -109,6 +109,8 @@ tg.onEvent("mainButtonClicked", () => {
         const reader = new FileReader()
         reader.onload = () => {
             const compressed = LZString.compressToBase64(reader.result)
+            console.log("Размер:", compressed.length)
+            tg.showAlert("Размер: " + compressed.length + " байт")
             tg.sendData(compressed)
             setTimeout(() => tg.close(), 1000)
         }
