@@ -8,13 +8,15 @@
     <style>
         body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; background: var(--tg-theme-bg-color, #f5f5f5); color: var(--tg-theme-text-color, #000); }
         canvas { background: #fff; border: 1px solid #ccc; border-radius: 12px; touch-action: none; cursor: crosshair; }
-        button { margin-top: 15px; padding: 10px 20px; border-radius: 8px; border: none; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); font-weight: bold; }
+        #clear { margin-top: 15px; padding: 10px 20px; border-radius: 8px; border: none; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); font-weight: bold; cursor: pointer; }
+        #portal { margin-top: 20px; padding: 15px; font-weight: bold; text-align: center; cursor: pointer; border: 1px dashed #ccc; border-radius: 8px; width: 80%; }
     </style>
 </head>
 <body>
 
 <canvas id="canvas" width="200" height="120"></canvas>
 <button id="clear">Очистить</button>
+<div id="portal">Нажмите здесь для отправки подписи</div>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -22,6 +24,7 @@ tg.ready();
 tg.expand();
 
 const canvas = document.getElementById("canvas");
+const portal = document.getElementById("portal");
 const ctx = canvas.getContext("2d");
 ctx.strokeStyle = "#000";
 ctx.lineWidth = 2;
@@ -42,22 +45,16 @@ canvas.addEventListener("pointermove", e => { if(!drawing) return; const p = pos
 canvas.addEventListener("pointerup", () => drawing = false);
 canvas.addEventListener("pointerleave", () => drawing = false);
 
-document.getElementById("clear").onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; };
+document.getElementById("clear").onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; portal.innerText = "Нажмите здесь для отправки подписи"; };
 
-tg.MainButton.setText("Подписать");
-tg.MainButton.show();
-
-tg.onEvent("mainButtonClicked", () => {
+portal.onclick = () => {
     if (!signed) {
         tg.showAlert("Пожалуйста, поставьте подпись.");
         return;
     }
 
-    // Показываем индикатор, блокируем кнопку
-    tg.MainButton.showProgress();
-    tg.MainButton.disable();
-
-    // Сжимаем и отправляем
+    portal.innerText = "Обработка...";
+    
     const small = document.createElement("canvas");
     small.width = 100; small.height = 60;
     small.getContext("2d").drawImage(canvas, 0, 0, 100, 60);
@@ -66,17 +63,14 @@ tg.onEvent("mainButtonClicked", () => {
         const reader = new FileReader();
         reader.onload = () => {
             const compressed = LZString.compressToBase64(reader.result);
-            
-            // Отправляем данные в N8N
+            portal.innerText = "Отправляю...";
             tg.sendData(compressed);
-            
-            // После успешной отправки закрываем приложение
-            // Telegram сам обработает это событие
-            tg.close();
+            portal.innerText = "Отправлено!";
+            setTimeout(() => tg.close(), 1000);
         };
         reader.readAsDataURL(blob);
     }, "image/jpeg", 0.5);
-});
+};
 </script>
 </body>
 </html>
