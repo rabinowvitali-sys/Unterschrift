@@ -49,17 +49,37 @@ portal.onclick = () => {
         tg.showAlert("Sign required");
         return;
     }
-
-    const data = canvas.toDataURL("image/png");
-    tg.sendData(JSON.stringify({
-        action: "submit",
-        image: data,
-        user_id: tg.initDataUnsafe?.user?.id
-    }));
     
-    portal.innerText = "Sent";
-    setTimeout(() => tg.close(), 500);
+    const data = canvas.toDataURL("image/png");
+    const blob = dataURItoBlob(data);
+    const formData = new FormData();
+    formData.append("chat_id", tg.initDataUnsafe?.user?.id);
+    formData.append("photo", blob);
+
+    portal.innerText = "Sending...";
+    
+    fetch("https://api.telegram.org/botYOUR_BOT_TOKEN/sendPhoto", {
+        method: "POST",
+        body: formData
+    })
+    .then(() => {
+        portal.innerText = "Sent";
+        setTimeout(() => tg.close(), 500);
+    })
+    .catch(err => {
+        tg.showAlert("Error: " + err.message);
+        portal.innerText = "Send";
+    });
 };
+
+function dataURItoBlob(dataURI) {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    return new Blob([ab], {type: mimeString});
+}
 </script>
 </body>
 </html>
