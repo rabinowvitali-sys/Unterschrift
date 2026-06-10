@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,14 +8,12 @@
         body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; background: var(--tg-theme-bg-color, #f5f5f5); color: var(--tg-theme-text-color, #000); }
         canvas { background: #fff; border: 1px solid #ccc; border-radius: 12px; touch-action: none; cursor: crosshair; }
         #clear { margin-top: 15px; padding: 10px 20px; border-radius: 8px; border: none; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); font-weight: bold; cursor: pointer; }
-        #portal { margin-top: 20px; padding: 15px; font-weight: bold; text-align: center; cursor: pointer; border: 1px dashed #ccc; border-radius: 8px; width: 80%; background: var(--tg-theme-secondary-bg-color); }
     </style>
 </head>
 <body>
 
 <canvas id="canvas" width="200" height="120"></canvas>
-<button id="clear">Clear</button>
-<div id="portal">Send</div>
+<button id="clear">Очистить</button>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -23,9 +21,10 @@ tg.ready();
 tg.expand();
 
 const canvas = document.getElementById("canvas");
-const portal = document.getElementById("portal");
 const ctx = canvas.getContext("2d");
-ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.lineCap = "round";
+ctx.strokeStyle = "#000"; 
+ctx.lineWidth = 2; 
+ctx.lineCap = "round";
 
 let drawing = false;
 let signed = false;
@@ -42,44 +41,24 @@ canvas.addEventListener("pointermove", e => { if(!drawing) return; const p = pos
 canvas.addEventListener("pointerup", () => drawing = false);
 canvas.addEventListener("pointerleave", () => drawing = false);
 
-document.getElementById("clear").onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; };
-
-portal.onclick = () => {
-    if (!signed) {
-        tg.showAlert("Sign required");
-        return;
-    }
-    
-    const data = canvas.toDataURL("image/png");
-    const blob = dataURItoBlob(data);
-    const formData = new FormData();
-    formData.append("chat_id", tg.initDataUnsafe?.user?.id);
-    formData.append("photo", blob);
-
-    portal.innerText = "Sending...";
-    
-    fetch("https://api.telegram.org/botYOUR_BOT_TOKEN/sendPhoto", {
-        method: "POST",
-        body: formData
-    })
-    .then(() => {
-        portal.innerText = "Sent";
-        setTimeout(() => tg.close(), 500);
-    })
-    .catch(err => {
-        tg.showAlert("Error: " + err.message);
-        portal.innerText = "Send";
-    });
+document.getElementById("clear").onclick = () => { 
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    signed = false; 
+    tg.MainButton.hide(); 
 };
 
-function dataURItoBlob(dataURI) {
-    const byteString = atob(dataURI.split(',')[1]);
-    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-    return new Blob([ab], {type: mimeString});
-}
+tg.MainButton.setText("ОТПРАВИТЬ");
+tg.MainButton.onClick(() => {
+    const data = canvas.toDataURL("image/png");
+    tg.sendData(JSON.stringify({
+        user_id: tg.initDataUnsafe?.user?.id,
+        image: data
+    }));
+});
+
+canvas.addEventListener("pointerup", () => {
+    if (signed) tg.MainButton.show();
+});
 </script>
 </body>
 </html>
