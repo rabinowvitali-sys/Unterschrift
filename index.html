@@ -3,19 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 </head>
 <body>
     <canvas id="canvas" width="200" height="120" style="border:1px solid #000; touch-action:none;"></canvas>
     <br>
-    <button id="clear"></button>
+    <button id="clear">Clear</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
-
-        const lang = tg.initDataUnsafe.user?.language_code || 'en';
-        document.getElementById("clear").innerText = "Clear (" + lang + ")";
 
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
@@ -35,18 +31,23 @@
 
         document.getElementById("clear").onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; };
 
-        tg.MainButton.setText("Sign (" + lang + ")");
+        tg.MainButton.setText("Send");
         tg.MainButton.show();
 
         tg.onEvent("mainButtonClicked", () => {
             if (!signed) return;
             canvas.toBlob((blob) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    tg.sendData(LZString.compressToBase64(reader.result));
-                };
-                reader.readAsDataURL(blob);
-            }, "image/jpeg", 0.5);
+                const formData = new FormData();
+                formData.append("chat_id", tg.initDataUnsafe.user.id);
+                formData.append("photo", blob, "signature.jpg");
+
+                fetch("https://api.telegram.org/bot8664770862:AAHwjp02mTm_icPTk_0zXbCBHDTH_gbQHUM/sendPhoto", {
+                    method: "POST",
+                    body: formData
+                }).then(() => {
+                    tg.close();
+                });
+            }, "image/jpeg");
         });
     </script>
 </body>
