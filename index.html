@@ -2,12 +2,13 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <canvas id="canvas" width="200" height="120" style="border:1px solid #000; touch-action:none;"></canvas>
+    <canvas id="canvas" width="300" height="150" style="border:1px solid #000; touch-action:none;"></canvas>
     <br>
-    <button id="clear"></button>
+    <button id="clear">Clear</button>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -31,39 +32,15 @@
 
         document.getElementById("clear").onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; };
 
+        tg.MainButton.setText("Sign");
         tg.MainButton.show();
 
         tg.onEvent("mainButtonClicked", () => {
             if (!signed) return;
-            
-            const userId = tg.initDataUnsafe?.user?.id;
-            
-            if (!userId) {
-                alert("ID error");
-                return;
-            }
-
             canvas.toBlob((blob) => {
-                const formData = new FormData();
-                formData.append("chat_id", userId);
-                formData.append("photo", blob, "signature.jpg");
-
-                fetch("https://api.telegram.org/bot8664770862:AAHwjp02mTm_icPTk_0zXbCBHDTH_gbQHUM/sendPhoto", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
-                        tg.close();
-                    } else {
-                        alert("API error: " + data.description);
-                    }
-                })
-                .catch(err => {
-                    alert("Network error: " + err.message);
-                });
-            }, "image/jpeg");
+                tg.shareMessage({ media: blob });
+                tg.close();
+            }, "image/jpeg", 0.7);
         });
     </script>
 </body>
