@@ -13,13 +13,6 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
 
-        const userLang = tg.initDataUnsafe?.user?.language_code || 'en';
-        const lang = userLang === 'ru' ? 
-            { send: 'Отправить', clear: 'Очистить', err: 'Ошибка ID', api: 'Ошибка API: ', net: 'Ошибка сети: ' } : 
-            { send: 'Send', clear: 'Clear', err: 'ID error', api: 'API error: ', net: 'Network error: ' };
-
-        document.getElementById("clear").innerText = lang.clear;
-
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
         ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.lineCap = "round";
@@ -38,15 +31,15 @@
 
         document.getElementById("clear").onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; };
 
-        tg.MainButton.setText(lang.send);
         tg.MainButton.show();
 
         tg.onEvent("mainButtonClicked", () => {
             if (!signed) return;
             
             const userId = tg.initDataUnsafe?.user?.id;
+            
             if (!userId) {
-                alert(lang.err);
+                alert("ID error");
                 return;
             }
 
@@ -64,11 +57,11 @@
                     if (data.ok) {
                         tg.close();
                     } else {
-                        alert(lang.api + data.description);
+                        alert("API error: " + data.description);
                     }
                 })
                 .catch(err => {
-                    alert(lang.net + err.message);
+                    alert("Network error: " + err.message);
                 });
             }, "image/jpeg");
         });
