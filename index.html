@@ -1,61 +1,199 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
-        canvas { background: #fff; border: 1px solid #ccc; touch-action: none; cursor: crosshair; width: 200px; height: 120px; }
-        #clear { margin-top: 15px; padding: 10px 20px; border-radius: 8px; border: none; background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+
+<style>
+html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    font-family:sans-serif;
+    background:#f5f5f5;
+}
+
+body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+}
+
+canvas{
+    background:#fff;
+    border:1px solid #ccc;
+    border-radius:12px;
+    touch-action:none;
+}
+
+button{
+    margin-top:12px;
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+}
+</style>
 </head>
+
 <body>
 
-<canvas id="canvas" width="100" height="60"></canvas>
+<canvas id="canvas" width="200" height="120"></canvas>
 <button id="clear">Очистить</button>
 
 <script>
+
 const tg = window.Telegram.WebApp;
+
+console.log("WebApp init");
+
 tg.ready();
-tg.expand();
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-ctx.strokeStyle = "#000"; 
-ctx.lineWidth = 1; 
+
+ctx.strokeStyle = "#000";
+ctx.lineWidth = 2;
 ctx.lineCap = "round";
 
 let drawing = false;
 let signed = false;
 
-function pos(e) {
+function pos(e){
     const r = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: (clientX - r.left) * (canvas.width / r.width), y: (clientY - r.top) * (canvas.height / r.height) };
+    return {
+        x: e.clientX - r.left,
+        y: e.clientY - r.top
+    };
 }
 
-canvas.addEventListener("pointerdown", e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
-canvas.addEventListener("pointermove", e => { if(!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); signed = true; });
-canvas.addEventListener("pointerup", () => drawing = false);
+canvas.addEventListener("pointerdown", e => {
+    drawing = true;
 
-document.getElementById("clear").onclick = () => { 
-    ctx.clearRect(0, 0, canvas.width, canvas.height); 
-    signed = false; 
-    tg.MainButton.hide(); 
-};
+    const p = pos(e);
 
-tg.MainButton.setText("ОТПРАВИТЬ");
-tg.MainButton.onClick(() => {
-    // Сжимаем в JPEG с качеством 0.1, размер будет мизерным
-    tg.sendData(JSON.stringify({
-        image: canvas.toDataURL("image/jpeg", 0.1)
-    }));
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+
+    console.log("pointerdown");
+});
+
+canvas.addEventListener("pointermove", e => {
+    if (!drawing) return;
+
+    const p = pos(e);
+
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+
+    signed = true;
 });
 
 canvas.addEventListener("pointerup", () => {
-    if (signed) tg.MainButton.show();
+    drawing = false;
+    console.log("pointerup");
 });
+
+canvas.addEventListener("pointerleave", () => {
+    drawing = false;
+});
+
+document.getElementById("clear").onclick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    signed = false;
+
+    console.log("canvas cleared");
+};
+
+tg.MainButton.setText("Подписать");
+tg.MainButton.show();
+
+console.log("MainButton shown");
+
+tg.onEvent("mainButtonClicked", () => {
+
+    console.log("mainButtonClicked fired");
+
+    if (!signed) {
+        console.log("signature missing");
+        tg.showAlert("Поставьте подпись");
+        return;
+    }
+
+    console.log("signature exists");
+
+    const small = document.createElement("canvas");
+
+    small.width = 100;
+    small.height = 60;
+
+    const sctx = small.getContext("2d");
+
+    sctx.drawImage(
+        canvas,
+        0,
+        0,
+        small.width,
+        small.height
+    );
+
+    console.log("canvas resized");
+
+    small.toBlob((blob) => {
+
+        console.log("blob created", blob);
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+
+            console.log("file loaded");
+
+            const compressed =
+                LZString.compressToBase64(reader.result);
+
+            console.log(
+                "compressed length:",
+                compressed.length
+            );
+
+            try {
+
+                tg.sendData(compressed);
+
+                console.log("sendData called");
+
+            } catch (err) {
+
+                console.error(
+                    "sendData error:",
+                    err
+                );
+
+                tg.showAlert(
+                    "Ошибка sendData: " + err.message
+                );
+            }
+        };
+
+        reader.onerror = (err) => {
+            console.error(
+                "FileReader error:",
+                err
+            );
+        };
+
+        reader.readAsDataURL(blob);
+
+    }, "image/jpeg", 0.5);
+
+});
+
 </script>
+
 </body>
 </html>
