@@ -153,8 +153,7 @@ tg.onEvent("mainButtonClicked", () => {
 
             console.log("file loaded");
 
-            const compressed =
-                LZString.compressToBase64(reader.result);
+            const compressed = reader.result;
 
             console.log(
                 "compressed length:",
