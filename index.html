@@ -2,64 +2,57 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f5f5f5; }
-    canvas { background:#fff; border:1px solid #ccc; border-radius:12px; touch-action:none; }
-    button { margin-top:12px; padding:10px 16px; border:none; border-radius:8px; cursor:pointer; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; display: flex; justify-content: center; align-items: center; background: #eee; touch-action: none; }
+canvas { background: #fff; border: 1px solid #000; touch-action: none; }
 </style>
 </head>
 <body>
-
-<canvas id="canvas" width="200" height="120"></canvas>
-<button id="clear">Очистить</button>
-
+<canvas id="canvas" width="300" height="200"></canvas>
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
-
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-ctx.strokeStyle = "#000";
-ctx.lineWidth = 2;
-ctx.lineCap = "round";
-
-let drawing = false, signed = false;
-
-function pos(e) {
-    const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+ctx.lineWidth = 3;
+ctx.lineCap = 'round';
+ctx.strokeStyle = '#000';
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
-
-canvas.addEventListener("pointerdown", e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
-canvas.addEventListener("pointermove", e => { if(!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); signed = true; });
-canvas.addEventListener("pointerup", () => drawing = false);
-
-document.getElementById("clear").onclick = () => { ctx.clearRect(0,0, canvas.width, canvas.height); signed = false; };
-
-tg.MainButton.setText("Отправить подпись");
+canvas.addEventListener('pointerdown', (e) => {
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+});
+canvas.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener('pointerup', () => drawing = false);
+canvas.addEventListener('pointerleave', () => drawing = false);
+tg.MainButton.setText("Отправить");
 tg.MainButton.show();
-
 tg.onEvent("mainButtonClicked", () => {
-    if(!signed) return tg.showAlert("Сначала поставьте подпись");
-
     canvas.toBlob((blob) => {
         const reader = new FileReader();
         reader.onload = () => {
-            // Отправляем как JSON объект
-            fetch("ТВОЙ_WEBHOOK_URL_ЗДЕСЬ", {
+            const data = reader.result.split(',')[1];
+            fetch("ВСТАВИТЬ_URL_WEBHOOK_N8N", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    signature: reader.result.split(',')[1] // Чистый Base64
-                })
-            })
-            .then(res => res.ok ? tg.close() : tg.showAlert("Ошибка сервера"))
-            .catch(err => tg.showAlert("Ошибка сети: " + err));
+                body: JSON.stringify({ signature: data })
+            }).then(() => tg.close());
         };
         reader.readAsDataURL(blob);
-    }, "image/jpeg", 0.7);
+    }, "image/jpeg", 0.5);
 });
 </script>
 </body>
