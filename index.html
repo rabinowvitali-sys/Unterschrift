@@ -103,6 +103,9 @@ tg.onEvent("mainButtonClicked", () => {
     small.width = 100
     small.height = 60
     const sctx = small.getContext("2d")
+    
+    sctx.fillStyle = "#ffffff"
+    sctx.fillRect(0, 0, small.width, small.height)
     sctx.drawImage(canvas, 0, 0, small.width, small.height)
 
     small.toBlob((blob) => {
