@@ -106,11 +106,13 @@ tg.onEvent("mainButtonClicked", () => {
     sctx.drawImage(canvas, 0, 0, small.width, small.height)
 
     small.toBlob((blob) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-            const compressed = LZString.compressToBase64(reader.result)
-            tg.sendData(compressed)
-            setTimeout(() => tg.close(), 1000)
+    const reader = new FileReader();
+    reader.onload = () => {
+        tg.sendData(reader.result);
+        setTimeout(() => tg.close(), 1000);
+    };
+    reader.readAsDataURL(blob);
+}, "image/jpeg", 0.5);
         }
         reader.readAsDataURL(blob)
     }, "image/jpeg", 0.5)
